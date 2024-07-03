@@ -80,18 +80,6 @@ top_shelf = mel.eval('$nul = $gShelfTopLevel')
 cur_shelf = cmds.tabLayout(top_shelf, q=1, st=1)
 is_py3 = sys.version[0] == '3'
 
-'''
-import imp, os, sys
-# -----------------------------------
-if not r'D:\GDrive\Documents\2024\matahuman_matcher' in sys.path:
-    sys.path.insert(0, r'D:\GDrive\Documents\2024\matahuman_matcher')
-# -----------------------------------
-import KFMataHModifier
-imp.reload(KFMataHModifier)
-mhm = KFMataHModifier.KFMetahumanModifier()
-mhm.show_ui()
-'''
-
 command_py3 = '''
 # -----------------------------------
 # MH RIG MODIFIER
@@ -110,4 +98,4 @@ mhm.show_ui()
 '''.format(tool_dir).strip()
 
 if is_py3:
-    cmds.shelfButton(stp='python', iol='Overlap', parent=cur_shelf, ann='KF Overlap', i=image_path, c=command_py3)
+    cmds.shelfButton(stp='python', iol='MataH', parent=cur_shelf, ann='KF MetaH Rig Modifier', i=image_path, c=command_py3)
