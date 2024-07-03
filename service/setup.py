@@ -56,15 +56,15 @@ if privacy_result != 'Confirm':
 """====================="""
 pt_file_path_ls = [os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.py')]
 pt_file_path_ls = [i for i in pt_file_path_ls if os.path.exists(i)]
-print(pt_file_path_ls)
 
 for pt_path in pt_file_path_ls:
+    if 'matahuman_matcher' in tool_dir:
+        break
     is_registered = False
     with open(pt_path, 'r') as f:
         l_read = f.readlines()
         l_read_join = ''.join(l_read)
         is_registered = not '$usr_orig$' in l_read_join
-        is_registered = 'matahuman_matcher' in tool_dir #specific path
         f.close()
     if not is_registered:
         l_read_join = l_read_join.replace('$usr_orig$', getpass.getuser())
