@@ -1,1 +1,1 @@
-print('GIT SUPPORT')
+print('SUPPORT')
