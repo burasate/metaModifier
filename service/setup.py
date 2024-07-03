@@ -14,7 +14,7 @@ except:
     maya_app_dir = mel.eval('getenv MAYA_APP_DIR')
     scripts_dir = os.path.abspath(maya_app_dir + os.sep + 'scripts')
     tool_dir = os.path.abspath(scripts_dir + os.sep + 'mhRigModifier')
-install_path = os.path.abspath(tool_dir + os.sep + 'Install.py')
+install_path = os.path.abspath(tool_dir + os.sep + 'drag_n_drop_installer.py')
 image_path = os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.png')
 print([tool_dir, os.path.exists(tool_dir)])
 print([install_path, os.path.exists(install_path)])
