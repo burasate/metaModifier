@@ -57,7 +57,7 @@ if privacy_result != 'Confirm':
 pt_file_path_ls = [os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.py')]
 pt_file_path_ls = [i for i in pt_file_path_ls if os.path.exists(i)]
 for pt_path in pt_file_path_ls:
-    if 'matahuman_matcher' in tool_dir:
+    if 'matahuman_matcher' in tool_dir: # specific work path
         break
     is_registered = False
     with open(pt_path, 'r') as f:
@@ -67,9 +67,47 @@ for pt_path in pt_file_path_ls:
         f.close()
     if not is_registered:
         l_read_join = l_read_join.replace('$usr_orig$', getpass.getuser())
-        #with open(pt_path, 'w') as f:
-            #f.writelines(l_read_join)
-            #f.close()
-        print(l_read_join)
+        with open(pt_path, 'w') as f:
+            f.writelines(l_read_join)
+            f.close()
         print(pt_path)
 
+"""====================="""
+# Shelf
+"""====================="""
+# Create Shelf
+top_shelf = mel.eval('$nul = $gShelfTopLevel')
+cur_shelf = cmds.tabLayout(top_shelf, q=1, st=1)
+is_py3 = sys.version[0] == '3'
+
+'''
+import imp, os, sys
+# -----------------------------------
+if not r'D:\GDrive\Documents\2024\matahuman_matcher' in sys.path:
+    sys.path.insert(0, r'D:\GDrive\Documents\2024\matahuman_matcher')
+# -----------------------------------
+import KFMataHModifier
+imp.reload(KFMataHModifier)
+mhm = KFMataHModifier.KFMetahumanModifier()
+mhm.show_ui()
+'''
+
+command_py3 = '''
+# -----------------------------------
+# MH RIG MODIFIER
+# dex3d.gumroad.com
+# -----------------------------------
+import os, sys
+# -----------------------------------
+if not r'{0}' in sys.path:
+    sys.path.insert(0, r'{0}')
+# -----------------------------------
+import KFMataHModifier
+imp.reload(KFMataHModifier)
+mhm = KFMataHModifier.KFMetahumanModifier()
+mhm.show_ui()
+# -----------------------------------
+'''.format(tool_dir).strip()
+
+if is_py3:
+    cmds.shelfButton(stp='python', iol='Overlap', parent=cur_shelf, ann='KF Overlap', i=image_path, c=command_py3)
