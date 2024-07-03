@@ -56,7 +56,6 @@ if privacy_result != 'Confirm':
 """====================="""
 pt_file_path_ls = [os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.py')]
 pt_file_path_ls = [i for i in pt_file_path_ls if os.path.exists(i)]
-
 for pt_path in pt_file_path_ls:
     if 'matahuman_matcher' in tool_dir:
         break
