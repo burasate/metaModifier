@@ -80,10 +80,12 @@ for pt_path in pt_file_path_ls:
 """====================="""
 # License Key
 """====================="""
-import re
 def is_valid_format(s):
+    import re
     pattern = r'^[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}$'
-    return bool(re.match(pattern, s))
+    is_match = bool(re.match(pattern, s))
+    return is_match
+
 while True:
     lk_result = cmds.promptDialog(message='MH Rig Modifier\nLicense Key : ',button=['OK'])
     licene_key = cmds.promptDialog(q=1, text=1)
