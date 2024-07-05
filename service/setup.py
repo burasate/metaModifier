@@ -1,5 +1,5 @@
 """
-KF OVERLAP SHELF INSTALLER
+MH RIG MODIFIER INSTALLER
 """
 from maya import cmds
 from maya import mel
@@ -16,22 +16,26 @@ except:
     tool_dir = os.path.abspath(scripts_dir + os.sep + 'mhRigModifier')
 install_path = os.path.abspath(tool_dir + os.sep + 'drag_n_drop_installer.py')
 image_path = os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.png')
+cfg_path = scripts_dir + os.sep + 'config.json'
 print([tool_dir, os.path.exists(tool_dir)])
 print([install_path, os.path.exists(install_path)])
-print(image_path)
+print([image_path, os.path.exists(image_path)])
+print([cfg_path, os.path.exists(cfg_path)])
 
-if not os.path.exists(tool_dir) or not os.path.exists(install_path):
-    error_msg = '''
-    -------------------------------------------------------------
-    Something went wrong about the installation.
-    -------------------------------------------------------------
-
-    please ensure the directory is placed correctly.
-    e.g. {0}
-
-    '''.format(tool_dir).strip()
-    cmds.confirmDialog(title='', message=error_msg, button=['OK'], icn='critical', ma='center')
-    raise Warning('WARNING!!\ndo not found \"Install file\" in {}'.format(tool_dir))
+for fp in [install_path, image_path, cfg_path]:
+    if not os.path.exists(tool_dir) or not os.path.exists(fp):
+        error_msg = '''
+        -------------------------------------------------------------
+        Something went wrong about the installation.
+        -------------------------------------------------------------
+        > {1}
+    
+        please ensure the directory is placed correctly.
+        e.g. {0}
+    
+        '''.format(tool_dir, fp).strip()
+        cmds.confirmDialog(title='', message=error_msg, button=['OK'], icn='critical', ma='center')
+        raise Warning('WARNING!!\ndo not found \"Install file\" in {}'.format(tool_dir))
 
 """====================="""
 # Privacy Message
@@ -58,6 +62,7 @@ pt_file_path_ls = [os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.py')]
 pt_file_path_ls = [i for i in pt_file_path_ls if os.path.exists(i)]
 for pt_path in pt_file_path_ls:
     if 'matahuman_matcher' in tool_dir: # specific work path
+        cmds.warning(tool_dir)
         break
     is_registered = False
     with open(pt_path, 'r') as f:
@@ -73,6 +78,23 @@ for pt_path in pt_file_path_ls:
         print(pt_path)
 
 """====================="""
+# License Key
+"""====================="""
+import re
+def is_valid_format(s):
+    pattern = r'^[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}$'
+    return bool(re.match(pattern, s))
+while True:
+    lk_result = cmds.promptDialog(message='MH Rig Modifier\nLicense Key : ',button=['OK'])
+    licene_key = cmds.promptDialog(q=1, text=1)
+    if is_valid_format(licene_key):
+        cfg = json.load(open(cfg_path))
+        cfg['license_key'] = licene_key
+        json.dump(cfg, open(cfg_path, 'w'), indent=4)
+        print([licene_key])
+        break
+
+"""====================="""
 # Shelf
 """====================="""
 # Create Shelf
@@ -85,7 +107,7 @@ command_py3 = '''
 # MH RIG MODIFIER
 # dex3d.gumroad.com
 # -----------------------------------
-import os, sys
+import imp, os, sys
 # -----------------------------------
 if not r'{0}' in sys.path:
     sys.path.insert(0, r'{0}')
@@ -99,3 +121,4 @@ mhm.show_ui()
 
 if is_py3:
     cmds.shelfButton(stp='python', iol='MataH', parent=cur_shelf, ann='KF MetaH Rig Modifier', i=image_path, c=command_py3)
+    cmds.confirmDialog(title='MH RIG MODIFIER', message='Create shelf button successful', button=['OK'])
