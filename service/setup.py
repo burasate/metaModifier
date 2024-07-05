@@ -80,8 +80,8 @@ for pt_path in pt_file_path_ls:
 """====================="""
 # License Key
 """====================="""
+import re
 def is_valid_format(s):
-    import re
     pattern = r'^[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}$'
     is_match = bool(re.match(pattern, s))
     return is_match
