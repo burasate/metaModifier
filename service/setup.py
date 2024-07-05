@@ -80,11 +80,19 @@ for pt_path in pt_file_path_ls:
 """====================="""
 # License Key
 """====================="""
-import re
 def is_valid_format(s):
-    pattern = r'^[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}$'
-    is_match = bool(re.match(pattern, s))
-    return is_match
+    if len(s) != 35:
+        return False
+    for i in [8, 17, 26]:
+        if s[i] != '-':
+            return False
+    hex_digits = '0123456789ABCDEF'
+    for i in range(35):
+        if i in [8, 17, 26]:
+            continue
+        if s[i] not in hex_digits:
+            return False
+    return True
 
 while True:
     lk_result = cmds.promptDialog(message='MH Rig Modifier\nLicense Key : ',button=['OK'])
