@@ -16,7 +16,7 @@ except:
     tool_dir = os.path.abspath(scripts_dir + os.sep + 'mhRigModifier')
 install_path = os.path.abspath(tool_dir + os.sep + 'drag_n_drop_installer.py')
 image_path = os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.png')
-cfg_path = scripts_dir + os.sep + 'config.json'
+cfg_path = os.path.dirname(install_path) + os.sep + 'config.json'
 print([tool_dir, os.path.exists(tool_dir)])
 print([install_path, os.path.exists(install_path)])
 print([image_path, os.path.exists(image_path)])
