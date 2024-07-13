@@ -108,7 +108,7 @@ try:
         #'license_email': self.usr_data['license_email'],
         'ip':str(uLib.urlopen('http://v4.ident.me').read().decode('utf8')),
         'os' : str(cmds.about(operatingSystem=1)),
-        #'license_key' : self.usr_data['license_key'],
+        'license_key' : self.func.config['license_key'] if 'license_key' in self.func.config else '',
         'script_path' : '' if __name__ == '__main__' else os.path.abspath(__file__).replace('pyc', 'py'),
         #'namespac_ls' : ','.join(cmds.namespaceInfo(lon=1)[:10]),
         'maya' : str(cmds.about(version=1)),
@@ -120,8 +120,8 @@ try:
         'user_orig' : self.user_original,
         #'fps' : scene.get_fps(),
     }
-    user_data['email'] = user_data['license_email'] if '@' in user_data['license_email'] else '{}@trial.com'.format(
-        user_data['user_last'].lower())
+    #user_data['email'] = user_data['license_email'] if '@' in user_data['license_email'] else '{}@trial.com'.format(
+        #user_data['user_last'].lower())
     add_queue_task('script_tool_check_in', user_data)
     del user_data
 except:
