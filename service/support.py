@@ -43,8 +43,11 @@ def update_version():
         print(py_path[len(tool_dir):])
         print(src_url + py_path[len(tool_dir):].replace('\\','/'))
         url = src_url + '/' + src_py
-        continue
+        if 'matahuman_matcher' in tool_dir:  # specific work path
+            cmds.warning(tool_dir)
+            break
 
+        continue
         response = uLib.urlopen(url)
         read = response.read()
         read = read.decode('utf-8') if type(read) == type(b'') else read
