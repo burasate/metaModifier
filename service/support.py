@@ -1,4 +1,4 @@
-#print('SUPPORT')
+print('Attempting to load add on plugins...')
 import os, json, sys, getpass
 
 """====================="""
