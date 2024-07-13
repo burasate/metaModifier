@@ -1057,7 +1057,7 @@ class func:
 class KFMetahumanModifier:
     def __init__(self):
         import getpass
-        self.version = 0.06
+        self.version = 0.07
         self.win_id = 'BRS_METAHMATCHER'
         self.dock_id = self.win_id + '_DOCK'
         self.win_width = 300
@@ -1076,7 +1076,6 @@ class KFMetahumanModifier:
         self.user_latest = getpass.getuser()
         self.is_connected = False
         self.func = func()
-        self.support(force=True)
 
     def init_win(self):
         if cmds.window(self.win_id, exists=1):

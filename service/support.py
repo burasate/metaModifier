@@ -126,7 +126,7 @@ def update_version(*_):
         with open(py_path, 'w') as f:
             f.writelines(u_read)
             f.close()
-            print('{}  is  updated..'.format(os.path.basename(py_path)))
+            print('{}  is  loaded..'.format(os.path.basename(py_path)))
 #---------------
 try:
     update_version()
