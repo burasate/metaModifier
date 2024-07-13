@@ -21,9 +21,9 @@ def update_version(*_):
 
     install_path = os.path.abspath(tool_dir + os.sep + 'drag_n_drop_installer.py')
     image_path = os.path.abspath(tool_dir + os.sep + 'KFMataHModifier.png')
-    print(tool_dir, os.path.exists(tool_dir))
-    print(install_path, os.path.exists(install_path))
-    print(image_path)
+    #print(tool_dir, os.path.exists(tool_dir))
+    #print(install_path, os.path.exists(install_path))
+    #print(image_path)
 
     """====================="""
     # Orig User Register to Files
