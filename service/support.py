@@ -53,11 +53,11 @@ def update_version(*_):
         u_read = read.replace('$usr_orig$', username)
         print('------------')
         #print(u_read)
-        print('url', url, py_path)
-        #with open(py_path, 'w') as f:
-            #f.writelines(u_read)
-            #f.close()
-            #print('{}  is  updated..'.format(py_path))
+        #print('url', url, py_path)
+        with open(py_path, 'w') as f:
+            f.writelines(u_read)
+            f.close()
+            print('{}  is  updated..'.format(os.path.basename(py_path)))
 #---------------
 update_version()
 #---------------
