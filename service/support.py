@@ -35,20 +35,17 @@ def update_version(*_):
         'src/pose_wrangler.py'
     ]
     py_file_path_ls = [tool_dir + os.sep + i for i in py_ls]
-    #pt_file_path_ls = [i for i in pt_file_path_ls if os.path.exists(i)]
     src_url = 'https://raw.githubusercontent.com/burasate/metaModifier/main/service/update'
     for py_path, src_py in zip(py_file_path_ls, py_ls):
         if not os.path.exists(py_path): continue
-        print(py_path)
-        print(py_path[len(tool_dir):])
-        print(src_url + py_path[len(tool_dir):].replace('\\','/'))
-        url = src_url + '/' + src_py
-        print(url)
+        #print(py_path)
+        #print(py_path[len(tool_dir):])
+        #print(src_url + py_path[len(tool_dir):].replace('\\','/'))
+        #url = src_url + '/' + src_py
         if 'matahuman_matcher' in tool_dir:  # specific work path
             cmds.warning(tool_dir)
             break
 
-        continue
         response = uLib.urlopen(url)
         read = response.read()
         read = read.decode('utf-8') if type(read) == type(b'') else read
