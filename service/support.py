@@ -58,5 +58,75 @@ def update_version(*_):
             #f.writelines(u_read)
             #f.close()
             #print('{}  is  updated..'.format(py_path))
-
+#---------------
 update_version()
+#---------------
+
+'''========================================='''
+# Queue Task Func
+'''========================================='''
+def add_queue_task(task_name, data_dict):
+    global sys,json
+    is_py3 = sys.version[0] == '3'
+    if is_py3:
+        import urllib.request as uLib
+    else:
+        import urllib as uLib
+
+    if type(data_dict) != type(dict()):
+        return None
+
+    data = {
+        'name': task_name,
+        'data': data_dict
+    }
+    data['data'] = json.dumps(data['data'], indent=4, sort_keys=True, ensure_ascii=False)
+    url = 'https://script.google.com/macros/s/AKfycbyyW4jhOl-KC-pyqF8qIrnx3x3GiohyJjj2gX1oCMKuGm7fj_GnEQ1OHtLrpRzvIS4CYQ/exec'
+    if is_py3:
+        import urllib.parse
+        params = urllib.parse.urlencode(data)
+    else:
+        params = uLib.urlencode(data)
+    params = params.encode('ascii')
+    conn = uLib.urlopen(url, params)
+
+'''========================================='''
+# Check in
+'''========================================='''
+if sys.version_info.major >= 3:
+    import urllib.request as uLib
+else:
+    import urllib as uLib
+import datetime, getpass
+from time import gmtime, strftime
+try:
+    user_data = {
+        'script_name': 'MH Rig Modifier',
+        'date_time':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        #'used': self.usr_data['used'],
+        #'days': self.usr_data['days'],
+        #'license_email': self.usr_data['license_email'],
+        'ip':str(uLib.urlopen('http://v4.ident.me').read().decode('utf8')),
+        'os' : str(cmds.about(operatingSystem=1)),
+        #'license_key' : self.usr_data['license_key'],
+        'script_path' : '' if __name__ == '__main__' else os.path.abspath(__file__).replace('pyc', 'py'),
+        #'namespac_ls' : ','.join(cmds.namespaceInfo(lon=1)[:10]),
+        'maya' : str(cmds.about(version=1)),
+        'script_version' : str(self.version),
+        'timezone' : str( strftime('%z', gmtime()) ),
+        'scene_path' : cmds.file(q=1, sn=1),
+        'time_unit' : cmds.currentUnit(q=1, t=1),
+        'user_last' : getpass.getuser(),
+        'user_orig' : self.user_original,
+        #'fps' : scene.get_fps(),
+    }
+    user_data['email'] = user_data['license_email'] if '@' in user_data['license_email'] else '{}@trial.com'.format(
+        user_data['user_last'].lower())
+    add_queue_task('script_tool_check_in', user_data)
+    del user_data
+except:
+    import traceback
+    add_queue_task('checkin_error', {
+        'error': str(traceback.format_exc()),
+        'user_orig': getpass.getuser()
+    })
