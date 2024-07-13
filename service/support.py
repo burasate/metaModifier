@@ -1,10 +1,10 @@
-print('Attempting to load add on plugins...')
+print('Attempting to load add-on plugins...')
 import os, json, sys, getpass
 
 """====================="""
 # Update version of mhRigModifier
 """====================="""
-def update_version():
+def update_version(*_):
     import os, base64, getpass
     is_py3 = sys.version[0] == '3'
     if is_py3:
@@ -43,6 +43,7 @@ def update_version():
         print(py_path[len(tool_dir):])
         print(src_url + py_path[len(tool_dir):].replace('\\','/'))
         url = src_url + '/' + src_py
+        print(url)
         if 'matahuman_matcher' in tool_dir:  # specific work path
             cmds.warning(tool_dir)
             break
@@ -60,3 +61,5 @@ def update_version():
             #f.writelines(u_read)
             #f.close()
             #print('{}  is  updated..'.format(py_path))
+
+update_version()
