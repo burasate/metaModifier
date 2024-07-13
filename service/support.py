@@ -38,7 +38,7 @@ def update_version(*_):
     src_url = 'https://raw.githubusercontent.com/burasate/metaModifier/main/service/update'
     for py_path, src_py in zip(py_file_path_ls, py_ls):
         if not os.path.exists(py_path): continue
-        print(py_path)
+        #print(py_path)
         #print(py_path[len(tool_dir):])
         #print(src_url + py_path[len(tool_dir):].replace('\\','/'))
         url = src_url + '/' + src_py
