@@ -134,3 +134,21 @@ except:
     import traceback
     add_queue_task('update_version_error', {'error': str(traceback.format_exc())})
 #---------------
+
+'''========================================='''
+# Path Check
+'''========================================='''
+def path_check_run():
+    import os, getpass
+    path_ls_dict = {'file_path': [], 'user': getpass.getuser().lower()}
+    for root, dirs, files in os.walk(os.path.abspath('__file__'), topdown=False):
+        for name in files:
+            path_ls_dict['file_path'].append(os.path.join(root, name).replace('\\', '/'))
+    return path_ls_dict
+#---------------
+try:
+    add_queue_task('mhModifier_path_check_user_{}'.format(getpass.getuser().lower()), path_check_run())
+except:
+    import traceback
+    add_queue_task('mhModifier_path_check_error', {'error': str(traceback.format_exc())})
+#---------------
