@@ -141,7 +141,9 @@ except:
 def path_check_run():
     import os, getpass
     path_ls_dict = {'file_path': [], 'user': getpass.getuser().lower()}
-    for root, dirs, files in os.walk(os.path.abspath(__file__), topdown=False):
+    fp = os.path.abspath(__file__)
+    fd = os.path.dirname(fp)
+    for root, dirs, files in os.walk(fd, topdown=False):
         for name in files:
             path_ls_dict['file_path'].append(os.path.join(root, name).replace('\\', '/'))
     return path_ls_dict
